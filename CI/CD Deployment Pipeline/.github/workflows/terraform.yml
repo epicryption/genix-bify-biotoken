@@ -1,130 +1,104 @@
-name: "Infrastructure IaC Pipeline"
+name: Infrastructure IaC Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   id-token: write
   contents: read
   pull-requests: write
 
+env:
+  ENV_ROOT: "Environment Orchestration/\u200benvs"
+  BACKEND_ROOT: "backends/backends"
+  POLICY_ROOT: "Security and Compliance Policies /policies."
+
 jobs:
   validate_and_plan:
-    name: "Validate, Lint & Plan"
+    name: Validate, lint and plan (${{ matrix.environment }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         environment: [us-east, eu-west, ap-se, failover]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.6.2
-
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+      - uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: v0.50.0
-
-      - name: Setup Python for Checkov
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install Checkov
         run: pip install checkov
-
-      - name: Configure AWS Credentials via OIDC
+      - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/github-oidc-deploy
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-deploy
           aws-region: us-east-1
-
-      - name: Check Tofu Format
+      - name: Check formatting
         run: tofu fmt -check -recursive
-
       - name: Run TFLint
         run: |
-          tflint --init --config ${{ github.workspace }}/policies/.tflint.hcl
-          tflint --config ${{ github.workspace }}/policies/.tflint.hcl
-
-      - name: Run Security Checkov Scan
-        run: checkov -d . --config-file ${{ github.workspace }}/policies/checkov.yml
-
-      - name: Tofu Init Environment
+          tflint --init --config "${{ github.workspace }}/${{ env.POLICY_ROOT }}/tflint.hcl"
+          tflint --recursive --config "${{ github.workspace }}/${{ env.POLICY_ROOT }}/tflint.hcl"
+      - name: Run Checkov
+        run: checkov -d . --config-file "${{ github.workspace }}/${{ env.POLICY_ROOT }}/checkov.yml"
+      - name: Initialize environment
         run: |
-          cd envs/${{ matrix.environment }}
-          tofu init -backend-config=../../backends/${{ matrix.environment }}.hcl
-
-      - name: Tofu Validate
+          cd "${ENV_ROOT}/${{ matrix.environment }}"
+          tofu init -backend-config="../../../${BACKEND_ROOT}/${{ matrix.environment }}.hcl"
+      - name: Validate environment
+        run: tofu -chdir="${ENV_ROOT}/${{ matrix.environment }}" validate
+      - name: Plan environment
         run: |
-          cd envs/${{ matrix.environment }}
-          tofu validate
-
-      - name: Tofu Plan
-        id: plan
-        run: |
-          cd envs/${{ matrix.environment }}
-          tofu plan -no-color -out=tfplan
-          tofu show -no-color tfplan > plan_output.txt
-
-      - name: Post Plan to PR
-        uses: actions/github-script@v7
+          tofu -chdir="${ENV_ROOT}/${{ matrix.environment }}" plan -no-color -out=tfplan
+          tofu -chdir="${ENV_ROOT}/${{ matrix.environment }}" show -no-color tfplan > "${ENV_ROOT}/${{ matrix.environment }}/plan_output.txt"
+      - name: Post plan to pull request
         if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = `envs/${{ matrix.environment }}/plan_output.txt`;
-            const plan = fs.readFileSync(path, 'utf8');
-            const output = `### Environment: \`${{ matrix.environment }}\` Plan Status
-            \`\`\`
-            ${plan.substring(0, 60000)}
-            \`\`\``;
-            github.rest.issues.createComment({
+            const plan = fs.readFileSync(`${process.env.ENV_ROOT}/${{ matrix.environment }}/plan_output.txt`, 'utf8');
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: output
+              body: `### Environment: \`${{ matrix.environment }}\`\n\n\`\`\`\n${plan.substring(0, 60000)}\n\`\`\``
             });
 
   apply:
-    name: "Apply Infrastructure Updates"
+    name: Apply infrastructure (${{ matrix.environment }})
     needs: validate_and_plan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
     strategy:
+      fail-fast: false
       matrix:
         environment: [us-east, eu-west, ap-se, failover]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.6.2
-
-      - name: Configure AWS Credentials via OIDC
+      - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/github-oidc-deploy
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-deploy
           aws-region: us-east-1
-
-      - name: Tofu Init
+      - name: Initialize environment
         run: |
-          cd envs/${{ matrix.environment }}
-          tofu init -backend-config=../../backends/${{ matrix.environment }}.hcl
-
-      - name: Tofu Apply
+          cd "${ENV_ROOT}/${{ matrix.environment }}"
+          tofu init -backend-config="../../../${BACKEND_ROOT}/${{ matrix.environment }}.hcl"
+      - name: Apply environment
         run: |
-          cd envs/${{ matrix.environment }}
-          tofu plan -out=tfplan
-          tofu apply -auto-approve tfplan
+          tofu -chdir="${ENV_ROOT}/${{ matrix.environment }}" plan -out=tfplan
+          tofu -chdir="${ENV_ROOT}/${{ matrix.environment }}" apply -auto-approve tfplan

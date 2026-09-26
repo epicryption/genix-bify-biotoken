@@ -3,7 +3,7 @@ terraform {
 }
 
 module "network" {
-  source       = "../../modules/network"
+  source       = "../../../module/modules/network"
   region       = var.region
   environment  = var.environment
   cidr_block   = var.cidr_block
@@ -32,7 +32,7 @@ resource "aws_security_group" "compute_client" {
 }
 
 module "compute" {
-  source             = "../../modules/compute"
+  source             = "../../../module/compute"
   environment        = var.environment
   vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_compute_subnet_ids
@@ -40,7 +40,7 @@ module "compute" {
 }
 
 module "database" {
-  source                    = "../../modules/database"
+  source                    = "../../../module/database"
   environment               = var.environment
   vpc_id                    = module.network.vpc_id
   private_data_subnet_ids   = module.network.private_data_subnet_ids
@@ -49,7 +49,7 @@ module "database" {
 }
 
 module "cache" {
-  source                    = "../../modules/cache"
+  source                    = "../../../module/cache"
   environment               = var.environment
   vpc_id                    = module.network.vpc_id
   private_data_subnet_ids   = module.network.private_data_subnet_ids
@@ -57,7 +57,7 @@ module "cache" {
 }
 
 module "edge" {
-  source            = "../../modules/edge"
+  source            = "../../../module/edge"
   environment       = var.environment
   vpc_id            = module.network.vpc_id
   public_subnet_ids = module.network.public_subnet_ids
