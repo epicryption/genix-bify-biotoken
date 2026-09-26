@@ -1,0 +1,130 @@
+name: "Infrastructure IaC Pipeline"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate_and_plan:
+    name: "Validate, Lint & Plan"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [us-east, eu-west, ap-se, failover]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.6.2
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.50.0
+
+      - name: Setup Python for Checkov
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-oidc-deploy
+          aws-region: us-east-1
+
+      - name: Check Tofu Format
+        run: tofu fmt -check -recursive
+
+      - name: Run TFLint
+        run: |
+          tflint --init --config ${{ github.workspace }}/policies/.tflint.hcl
+          tflint --config ${{ github.workspace }}/policies/.tflint.hcl
+
+      - name: Run Security Checkov Scan
+        run: checkov -d . --config-file ${{ github.workspace }}/policies/checkov.yml
+
+      - name: Tofu Init Environment
+        run: |
+          cd envs/${{ matrix.environment }}
+          tofu init -backend-config=../../backends/${{ matrix.environment }}.hcl
+
+      - name: Tofu Validate
+        run: |
+          cd envs/${{ matrix.environment }}
+          tofu validate
+
+      - name: Tofu Plan
+        id: plan
+        run: |
+          cd envs/${{ matrix.environment }}
+          tofu plan -no-color -out=tfplan
+          tofu show -no-color tfplan > plan_output.txt
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = `envs/${{ matrix.environment }}/plan_output.txt`;
+            const plan = fs.readFileSync(path, 'utf8');
+            const output = `### Environment: \`${{ matrix.environment }}\` Plan Status
+            \`\`\`
+            ${plan.substring(0, 60000)}
+            \`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  apply:
+    name: "Apply Infrastructure Updates"
+    needs: validate_and_plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [us-east, eu-west, ap-se, failover]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.6.2
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-oidc-deploy
+          aws-region: us-east-1
+
+      - name: Tofu Init
+        run: |
+          cd envs/${{ matrix.environment }}
+          tofu init -backend-config=../../backends/${{ matrix.environment }}.hcl
+
+      - name: Tofu Apply
+        run: |
+          cd envs/${{ matrix.environment }}
+          tofu plan -out=tfplan
+          tofu apply -auto-approve tfplan
