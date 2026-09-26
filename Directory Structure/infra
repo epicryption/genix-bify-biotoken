@@ -1,0 +1,61 @@
+infra/
+├── .github/
+│   └── workflows/
+│       └── terraform.yml
+├── backends/
+│   ├── ap-se.hcl
+│   ├── eu-west.hcl
+│   ├── failover.hcl
+│   └── us-east.hcl
+├── envs/
+│   ├── ap-se/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   ├── providers.tf
+│   │   ├── terraform.tfvars
+│   │   └── variables.tf
+│   ├── eu-west/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   ├── providers.tf
+│   │   ├── terraform.tfvars
+│   │   └── variables.tf
+│   ├── failover/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   ├── providers.tf
+│   │   ├── terraform.tfvars
+│   │   └── variables.tf
+│   └── us-east/
+│       ├── main.tf
+│       ├── outputs.tf
+│       ├── providers.tf
+│       ├── terraform.tfvars
+│       └── variables.tf
+├── modules/
+│   ├── cache/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── compute/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── database/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── edge/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   └── network/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+├── policies/
+│   ├── .tflint.hcl
+│   └── checkov.yml
+├── bootstrap/
+│   └── main.tf
+└── versions.tf
