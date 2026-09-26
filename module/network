@@ -1,0 +1,30 @@
+variable "region" {
+  type        = string
+  description = "Target deployment region"
+}
+
+variable "environment" {
+  type        = string
+  description = "Deployment environment name"
+}
+
+variable "cidr_block" {
+  type        = string
+  description = "Base VPC IPv4 CIDR block"
+}
+
+variable "az_count" {
+  type        = number
+  default     = 3
+  description = "Number of Availability Zones to utilize"
+}
+
+variable "nat_strategy" {
+  type        = string
+  default     = "per-az"
+  description = "NAT Gateway allocation strategy: 'single' or 'per-az'"
+  validation {
+    condition     = contains(["single", "per-az"], var.nat_strategy)
+    error_message = "nat_strategy must be either 'single' or 'per-az'."
+  }
+}
