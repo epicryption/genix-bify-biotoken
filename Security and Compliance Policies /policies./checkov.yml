@@ -1,0 +1,8 @@
+block-disallowed: true
+compact: true
+quiet: false
+soft-fail: false
+framework:
+  - terraform
+skip-check:
+  - CKV_AWS_144 # Cross-region S3 replication (Managed per environment state)
