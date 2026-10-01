@@ -35,7 +35,7 @@ An entry labeled "phosphoglucosamine mutase" might be exactly that — or a misa
 Architecture
 
 ```
-                        +-- Microsoft Foundry / GCP / WAF ---+
+         (^×÷+- Microsoft Foundry / GCP / WAF -+÷×^)
                         |   DDoS + edge cache    |
                         +----------+-----------+
                                    |
