@@ -1,4 +1,4 @@
-Genix-bufi-biitokens
+Genix-BIFY-Biotokens
 
 > Tokenizing verified biological data: a Web3 marketplace concept merging RWAs, NFTs, and AI curation to bring trust and provenance to protein/enzyme datasets — built on Base, powered by BIFY-style utility tokens.
 
