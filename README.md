@@ -22,9 +22,9 @@ Table of contents
 
 What is this?
 
-Genix-bufi-biitokens is a concept repository exploring what happens when you apply a BIFY-style Web3 marketplace model — real world assets (RWAs), non-fungible tokens (NFTs), and AI curation, deployed on Coinbase's Base network — to the least-trusted data in science: biological sequence data.
+Genix-BIFY-Biotokens is a concept repository exploring what happens when you apply a BIFY-style Web3 marketplace model — real world assets (RWAs), non-fungible tokens (NFTs), and AI curation, deployed on Coinbase's Base network — to the least-trusted data in science: biological sequence data.
 
-The pitch in one sentence: scientific data deserves the same verification infrastructure we apply to a deed or a painting.
+Scientific data deserves the same verification infrastructure we apply to a deed or a painting.
 
 Every day, bioinformatics databases ingest thousands of protein sequences with almost no guarantee any of it is accurate. This repo holds the design writing and infrastructure plan for a marketplace where verified protein/enzyme entries become tokenized, provenance-backed, AI-curated assets.
 
@@ -35,7 +35,7 @@ An entry labeled "phosphoglucosamine mutase" might be exactly that — or a misa
 Architecture
 
 ```
-                        +-- Cloudflare / WAF ---+
+                        +-- Microsoft Foundry / GCP / WAF ---+
                         |   DDoS + edge cache    |
                         +----------+-----------+
                                    |
